@@ -3,8 +3,14 @@ from mcp.server.fastmcp import FastMCP, Image
 from fm_comfyui_bridge.bridge import (
     free,
     generate,
+    send_request,
+    await_request,
+    t2i_request_build,
 )
 from fm_comfyui_bridge.lora_yaml import SdLoraYaml
+import fm_comfyui_bridge.config as config
+import requests
+
 
 NEGATIVE = '''
 worst quality, bad quality, low quality, lowres, scan artifacts, jpeg artifacts, sketch,
@@ -18,8 +24,8 @@ mcp = FastMCP("fm-mcp-comfyui-bridge")
 
 
 @mcp.tool()
-def generate_picture(prompt: str) -> Image:
-    """ 生成したいプロンプトを渡すことで画像生成を依頼し、生成された png image の byteformat を返します。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。 """
+def generate_picture(prompt: str) -> str:
+    """ 生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。 """
     lora = SdLoraYaml()
     lora.data = {
         "checkpoint": "zukiAnimeILL_v40.safetensors",
@@ -38,16 +44,25 @@ def generate_picture(prompt: str) -> Image:
         ],
     }
     # image generate
-    img = generate(
-        prompt,
-        NEGATIVE,
-        lora,
-        (1024, 1024)
+    id = send_request(
+        t2i_request_build(prompt, NEGATIVE, lora, (1024, 1024))
     )
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-    return Image(data=buffer.getvalue(), format="png")
+    if id:
+        await_request(1, 3)
+    else:
+        return "Generate error."
+    url = config.COMFYUI_URL
+    output_node = config.COMFYUI_NODE_OUTPUT
+    # リクエストヒストリからファイル名を取得
+    headers = {"Content-Type": "application/json"}
+    response = requests.get(f"{url}history/{id}", headers=headers)
+    if response.status_code != 200:
+        print(f"Error: {response.status_code}")
+        print(response.text)
+        return None
+    subdir = response.json()[id]["outputs"][output_node]["images"][0]["subfolder"]
+    filename = response.json()[id]["outputs"][output_node]["images"][0]["filename"]
+    return f"{url}view?subfolder={subdir}&filename={filename}"
 
 
 # リソースを追加
@@ -55,7 +70,7 @@ def generate_picture(prompt: str) -> Image:
 def get_info() -> str:
     """サーバー情報"""
     return """
-    この MCP server は、ComfyUI へのブリッジ機能を提供します。プロンプトを渡すことで画像バイナリデータを返します。
+    この MCP server は、ComfyUI へのブリッジ機能を提供します。プロンプトを渡すことで画像URLを返します。ユーザーには markdown 画像リンクで URL を表示してください。
     このサーバーはデモ用のMCPサーバーです。
     name: fm-mcp-comfyui-bridge
     version: 0.1.0
@@ -75,11 +90,11 @@ def get_documents(topic: str) -> str:
     """tool のドキュメント"""
     if topic == "generate_picture":
         return """
-        プロンプトを渡すことで画像生成を依頼します、生成された png image の byteformat を返します:
+        プロンプトを渡すことで画像生成を依頼します、生成された画像のURLを返します:
         - iuput
             - prompt: 生成する画像のプロンプト文字列。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。
         - output
-            - image: 生成された png image の byteformat
+            - image: 生成された画像URLを返します。ユーザーにURLを提示してください。
         """
     else:
         return ""

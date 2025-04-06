@@ -97,12 +97,14 @@ source = { editable = "." }
 dependencies = [
     { name = "fm-comfyui-bridge" },
     { name = "mcp", extra = ["cli"] },
+    { name = "requests" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fm-comfyui-bridge", specifier = ">=0.7.0" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.6.0" },
+    { name = "requests", specifier = ">=2.32.3" },
 ]
 
 [[package]]
