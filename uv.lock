@@ -93,7 +93,7 @@ wheels = [
 [[package]]
 name = "fm-mcp-comfyui-bridge"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "fm-comfyui-bridge" },
     { name = "mcp", extra = ["cli"] },

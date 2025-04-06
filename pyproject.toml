@@ -1,10 +1,24 @@
 [project]
 name = "fm-mcp-comfyui-bridge"
 version = "0.1.0"
-description = "Add your description here"
+description = "ComfyUI Bridge MCP"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fm-comfyui-bridge>=0.7.0",
     "mcp[cli]>=1.6.0",
 ]
+
+[[project.authors]]
+name = "rerofumi"
+email = "rero2@yuumu.org"
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project.scripts]
+fm-mcp-comfyui-bridge = "fm_mcp_comfyui_bridge:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fm_mcp_comfyui_bridge"]
