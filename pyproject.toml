@@ -1,0 +1,10 @@
+[project]
+name = "fm-mcp-comfyui-bridge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fm-comfyui-bridge>=0.7.0",
+    "mcp[cli]>=1.6.0",
+]
