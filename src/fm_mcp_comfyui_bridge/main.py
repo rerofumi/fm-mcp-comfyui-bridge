@@ -1,21 +1,18 @@
-import io
-from mcp.server.fastmcp import FastMCP, Image
+import fm_comfyui_bridge.config as config
+import requests
 from fm_comfyui_bridge.bridge import (
-    free,
-    generate,
-    send_request,
     await_request,
+    free,
+    send_request,
     t2i_request_build,
 )
 from fm_comfyui_bridge.lora_yaml import SdLoraYaml
-import fm_comfyui_bridge.config as config
-import requests
+from mcp.server.fastmcp import FastMCP, Image
 
-
-NEGATIVE = '''
+NEGATIVE = """
 worst quality, bad quality, low quality, lowres, scan artifacts, jpeg artifacts, sketch,
 light particles, jpeg artifacts, unfinished, oldest, old, abstract, signature
-'''
+"""
 
 HOST = "http://localhost:8188"
 
@@ -25,7 +22,7 @@ mcp = FastMCP("fm-mcp-comfyui-bridge")
 
 @mcp.tool()
 def generate_picture(prompt: str) -> str:
-    """ 生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。 """
+    """生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。"""
     lora = SdLoraYaml()
     lora.data = {
         "checkpoint": "zukiAnimeILL_v40.safetensors",
@@ -44,11 +41,10 @@ def generate_picture(prompt: str) -> str:
         ],
     }
     # image generate
-    id = send_request(
-        t2i_request_build(prompt, NEGATIVE, lora, (1024, 1024))
-    )
+    id = send_request(t2i_request_build(prompt, NEGATIVE, lora, (1024, 1024)))
     if id:
         await_request(1, 3)
+        free()
     else:
         return "Generate error."
     url = config.COMFYUI_URL
@@ -65,6 +61,20 @@ def generate_picture(prompt: str) -> str:
     return f"{url}view?subfolder={subdir}&filename={filename}"
 
 
+@mcp.tool()
+def get_picture(subfolder: str, filename: str) -> Image:
+    """subfolder と filename を指定して画像の PNG バイナリを取得する"""
+    url = config.COMFYUI_URL
+    headers = {"Content-Type": "application/json"}
+    params = {"subfolder": subfolder, "filename": filename}
+    response = requests.get(f"{url}view", headers=headers, params=params)
+    if response.status_code != 200:
+        print(f"Error: {response.status_code}")
+        print(response.text)
+        return None
+    return Image(data=response.content, format="png")
+
+
 # リソースを追加
 @mcp.resource("info://about")
 def get_info() -> str:
@@ -77,6 +87,7 @@ def get_info() -> str:
     auther: rerofumi
     """
 
+
 @mcp.resource("help://tools")
 def get_tools_help() -> str:
     """ツールのヘルプ"""
@@ -84,6 +95,7 @@ def get_tools_help() -> str:
     以下のツールが存在します:
     - generate_picture: 画像生成。プロンプト文字列を渡します。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。
     """
+
 
 @mcp.resource("docs://{topic}")
 def get_documents(topic: str) -> str:
@@ -98,10 +110,11 @@ def get_documents(topic: str) -> str:
         """
     else:
         return ""
-        
+
 
 def main():
     mcp.run()
+
 
 if __name__ == "__main__":
     main()
