@@ -9,9 +9,29 @@ from fm_comfyui_bridge.bridge import (
 from fm_comfyui_bridge.lora_yaml import SdLoraYaml
 from mcp.server.fastmcp import FastMCP, Image
 
+import fm_mcp_comfyui_bridge.ollama_caption as OllamaCaption
+import fm_mcp_comfyui_bridge.tagger as Tagger
+
 NEGATIVE = """
 worst quality, bad quality, low quality, lowres, scan artifacts, jpeg artifacts, sketch,
 light particles, jpeg artifacts, unfinished, oldest, old, abstract, signature
+"""
+
+VISION_PROMPT = """
+# 指示
+以下のイラストについて、詳細なテキストキャプションを生成してください。
+
+# 注目してほしい点
+*   全体的な雰囲気（例：暖かく穏やか、神秘的で静かなど）
+*   主要な被写体（人物の場合：外見、服装、表情、ポーズ、何をしているか。物の場合：種類、状態、特徴）
+*   背景（場所、時間帯、天候、描かれている要素）
+*   構図と構成要素（主要なオブジェクトの位置関係、前景・中景・後景の要素）
+*   色使い（全体的なトーン、印象的な色）
+*   画風（例：アニメスタイル、写実的、水彩風など）
+*   イラストから感じられる感情やストーリー
+
+# 出力形式
+自然な文章で、上記の注目点を網羅するように、できるだけ詳しく記述してください。
 """
 
 HOST = "http://localhost:8188"
@@ -25,7 +45,7 @@ def generate_picture(prompt: str) -> str:
     """生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。"""
     lora = SdLoraYaml()
     lora.data = {
-        "checkpoint": "zukiAnimeILL_v40.safetensors",
+        "checkpoint": "raindropIllustriousXL_v10.safetensors",
         "vpred": False,
         "image-size": {
             "width": 1024,
@@ -73,6 +93,24 @@ def get_picture(subfolder: str, filename: str) -> Image:
         print(response.text)
         return None
     return Image(data=response.content, format="png")
+
+
+@mcp.tool()
+def get_caption(subfolder: str, filename: str) -> str:
+    """subfolder と filename を指定して生成した画像のキャプションをテキスト形式で取得する"""
+    url = f"{config.COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
+    vision = OllamaCaption.OllamaCaption(model_name="gemma3:27b")
+    caption = vision.caption(url, prompt=VISION_PROMPT)
+    return caption
+
+
+@mcp.tool()
+def get_tag(subfolder: str, filename: str) -> str:
+    """subfolder と filename を指定して生成した画像からWD1.4タグを解析してテキスト形式で取得する"""
+    url = f"{config.COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
+    tagger = Tagger.WD14Tagger(Tagger.SWINV2_MODEL_DSV3_REPO)
+    tags = tagger.image_tag(url, threshold=0.25)
+    return tags
 
 
 # リソースを追加
