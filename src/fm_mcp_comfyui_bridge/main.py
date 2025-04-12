@@ -42,17 +42,22 @@ HOST = "http://localhost:8188"
 mcp = FastMCP("fm-mcp-comfyui-bridge")
 
 
-@mcp.tool()
-def generate_picture(prompt: str) -> str:
-    """生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。"""
+def get_lora() -> SdLoraYaml:
     # main.py のあるディレクトリを取得
     current_dir = Path(__file__).parent
     # config ディレクトリ内の lora.yaml へのパスを構築
     lora_yaml_path = current_dir / "config" / "lora.yaml"
     lora = SdLoraYaml()
     lora.read_from_yaml(lora_yaml_path)
+    return lora
+
+
+@mcp.tool()
+def generate_picture(prompt: str) -> str:
+    """生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。"""
+    lora = get_lora()
     # image generate
-    id = send_request(t2i_request_build(prompt, NEGATIVE, lora, (1024, 1024)))
+    id = send_request(t2i_request_build(prompt, NEGATIVE, lora, lora.image_size))
     if id:
         await_request(1, 3)
         free()
@@ -89,8 +94,9 @@ def get_picture(subfolder: str, filename: str) -> Image:
 @mcp.tool()
 def get_caption(subfolder: str, filename: str) -> str:
     """subfolder と filename を指定して生成した画像のキャプションをテキスト形式で取得する"""
+    lora = get_lora()
     url = f"{config.COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
-    vision = OllamaCaption.OllamaCaption(model_name="gemma3:27b")
+    vision = OllamaCaption.OllamaCaption(model_name=lora.data["vision_model"])
     caption = vision.caption(url, prompt=VISION_PROMPT)
     return caption
 

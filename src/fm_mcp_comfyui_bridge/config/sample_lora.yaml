@@ -1,13 +1,14 @@
-checkpoint: catTowerNoobaiXL_v17Vpred.safetensors
+checkpoint: (any_checkpoint_model).safetensors
 image-size:
   height: 1024
   width: 1024
 lora:
 - enabled: false
-  model: lora-ix-koto_nai3-v1.safetensors
-  strength: 0
-  trigger: koto_nai3
+  model: (any_lora_model).safetensors
+  strength: 1.0
+  trigger: 
 sampling:
   cfg: 5
   steps: 24
 vpred: true
+vision_model: gemma3:27b

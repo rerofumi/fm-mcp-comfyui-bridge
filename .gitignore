@@ -10,4 +10,4 @@ wheels/
 .venv
 
 src/fm_mcp_comfyui_bridge/config/lora.yaml
-src\fm_mcp_comfyui_bridge\config\lora.yaml
+
