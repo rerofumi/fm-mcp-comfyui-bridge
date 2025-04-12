@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import fm_comfyui_bridge.config as config
 import requests
 from fm_comfyui_bridge.bridge import (
@@ -43,23 +45,12 @@ mcp = FastMCP("fm-mcp-comfyui-bridge")
 @mcp.tool()
 def generate_picture(prompt: str) -> str:
     """生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。"""
+    # main.py のあるディレクトリを取得
+    current_dir = Path(__file__).parent
+    # config ディレクトリ内の lora.yaml へのパスを構築
+    lora_yaml_path = current_dir / "config" / "lora.yaml"
     lora = SdLoraYaml()
-    lora.data = {
-        "checkpoint": "raindropIllustriousXL_v10.safetensors",
-        "vpred": False,
-        "image-size": {
-            "width": 1024,
-            "height": 1024,
-        },
-        "lora": [
-            {
-                "enabled": False,
-                "model": "lora-ix-momoshiro_mix-v1.safetensors",
-                "trigger": "momoshiro_mix",
-                "strength": 1.0,
-            }
-        ],
-    }
+    lora.read_from_yaml(lora_yaml_path)
     # image generate
     id = send_request(t2i_request_build(prompt, NEGATIVE, lora, (1024, 1024)))
     if id:
