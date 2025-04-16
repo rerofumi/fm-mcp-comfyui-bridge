@@ -152,6 +152,9 @@ uv pip install -e .
 
 `src\fm_mcp_comfyui_bridge\config\workflow\` の下に API 形式の workflow ファイルを置いて、カスタムワークフローとして実行することができます。
 
+`src\fm_mcp_comfyui_bridge\config\custom.yaml` が存在していたらカスタムワークフローとして実行されます。
+存在しない場合はデフォルトのワークフローが実行されます。
+
 `example/` ディレクトリにサンプルのカスタムワークフローファイルを置いています。
 config の下にコピーして動作を試してください。Flux1-dev で画像生成を行うサンプルとなっています。
 
