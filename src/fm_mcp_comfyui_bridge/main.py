@@ -85,11 +85,14 @@ def generate_picture(prompt: str) -> str:
     custom = get_custom_config()
     if custom:
         prompt = ComfyuiBridge.t2i_custom_request_build(prompt, custom)
+        tree = custom["filename_prefix"].split(":")
+        output_node = tree[0]
     else:
         lora = get_lora()
         prompt = ComfyuiBridge.t2i_request_build(
             prompt, NEGATIVE, lora, lora.image_size
         )
+        output_node = COMFYUI_NODE_OUTPUT
     # image generate
     id = ComfyuiBridge.send_request(prompt)
     if id:
@@ -98,7 +101,6 @@ def generate_picture(prompt: str) -> str:
     else:
         return "Generate error."
     url = COMFYUI_URL
-    output_node = COMFYUI_NODE_OUTPUT
     # リクエストヒストリからファイル名を取得
     headers = {"Content-Type": "application/json"}
     response = requests.get(f"{url}history/{id}", headers=headers)
@@ -128,9 +130,9 @@ def get_picture(subfolder: str, filename: str) -> Image:
 @mcp.tool()
 def get_caption(subfolder: str, filename: str) -> str:
     """subfolder と filename を指定して生成した画像のキャプションをテキスト形式で取得する"""
-    lora = get_lora()
+    ollama_model = get_ollama_config()
     url = f"{COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
-    vision = OllamaCaption.OllamaCaption(model_name=lora.data["vision_model"])
+    vision = OllamaCaption.OllamaCaption(model_name=ollama_model)
     caption = vision.caption(url, prompt=VISION_PROMPT)
     return caption
 
