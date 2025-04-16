@@ -1,0 +1,4 @@
+workflow: "flux1-dev-API.json"
+text_prompt: "6:inputs:text"
+seed: "25:inputs:noise_seed"
+filename_prefix: "9:inputs:filename_prefix"

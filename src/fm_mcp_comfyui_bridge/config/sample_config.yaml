@@ -10,5 +10,4 @@ lora:
 sampling:
   cfg: 5
   steps: 24
-vpred: true
-vision_model: gemma3:27b
+vpred: false

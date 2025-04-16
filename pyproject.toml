@@ -1,11 +1,10 @@
 [project]
 name = "fm-mcp-comfyui-bridge"
-version = "0.1.0"
+version = "0.2.0"
 description = "ComfyUI Bridge MCP"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fm-comfyui-bridge>=0.7.0",
     "mcp[cli]>=1.6.0",
     "requests>=2.32.3",
     "huggingface-hub>=0.25.2",
@@ -13,6 +12,7 @@ dependencies = [
     "ollama>=0.3.3",
     "onnxruntime>=1.19.2",
     "pandas>=2.2.3",
+    "pillow>=11.2.1",
 ]
 
 [[project.authors]]

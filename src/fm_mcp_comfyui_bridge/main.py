@@ -1,18 +1,17 @@
 from pathlib import Path
 
-import fm_comfyui_bridge.config as config
 import requests
-from fm_comfyui_bridge.bridge import (
-    await_request,
-    free,
-    send_request,
-    t2i_request_build,
-)
-from fm_comfyui_bridge.lora_yaml import SdLoraYaml
+import yaml
 from mcp.server.fastmcp import FastMCP, Image
 
 import fm_mcp_comfyui_bridge.ollama_caption as OllamaCaption
 import fm_mcp_comfyui_bridge.tagger as Tagger
+from fm_mcp_comfyui_bridge.comfyui_bridge import (
+    COMFYUI_NODE_OUTPUT,
+    COMFYUI_URL,
+    ComfyuiBridge,
+)
+from fm_mcp_comfyui_bridge.lora_yaml import SdLoraYaml
 
 NEGATIVE = """
 worst quality, bad quality, low quality, lowres, scan artifacts, jpeg artifacts, sketch,
@@ -46,25 +45,60 @@ def get_lora() -> SdLoraYaml:
     # main.py のあるディレクトリを取得
     current_dir = Path(__file__).parent
     # config ディレクトリ内の lora.yaml へのパスを構築
-    lora_yaml_path = current_dir / "config" / "lora.yaml"
+    lora_yaml_path = current_dir / "config" / "config.yaml"
     lora = SdLoraYaml()
     lora.read_from_yaml(lora_yaml_path)
     return lora
 
 
+def get_ollama_config() -> str:
+    # main.py のあるディレクトリを取得
+    current_dir = Path(__file__).parent
+    # config ディレクトリ内の lora.yaml へのパスを構築
+    ollama_yaml_path = current_dir / "config" / "ollama.yaml"
+    # ファイルがなかったら戻り
+    if not ollama_yaml_path.exists():
+        return None
+    # ファイルがあったら yaml として読み込み
+    with open(ollama_yaml_path, "r", encoding="utf-8") as file:
+        ollama_yaml = yaml.safe_load(file)
+        return ollama_yaml["vision_model"]
+
+
+def get_custom_config() -> any:
+    # main.py のあるディレクトリを取得
+    current_dir = Path(__file__).parent
+    # config ディレクトリ内の lora.yaml へのパスを構築
+    custom_yaml_path = current_dir / "config" / "custom.yaml"
+    # ファイルがなかったら戻り
+    if not custom_yaml_path.exists():
+        return None
+    # ファイルがあったら yaml として読み込み
+    with open(custom_yaml_path, "r", encoding="utf-8") as file:
+        custom_yaml = yaml.safe_load(file)
+        return custom_yaml
+
+
 @mcp.tool()
 def generate_picture(prompt: str) -> str:
     """生成したいプロンプトを渡すことで画像生成を依頼し、生成された image の url を返すのでユーザーに提示してください。英語のプロンプトのみ受け付けるので、他言語は英語に翻訳してから渡してください。"""
-    lora = get_lora()
+    custom = get_custom_config()
+    if custom:
+        prompt = ComfyuiBridge.t2i_custom_request_build(prompt, custom)
+    else:
+        lora = get_lora()
+        prompt = ComfyuiBridge.t2i_request_build(
+            prompt, NEGATIVE, lora, lora.image_size
+        )
     # image generate
-    id = send_request(t2i_request_build(prompt, NEGATIVE, lora, lora.image_size))
+    id = ComfyuiBridge.send_request(prompt)
     if id:
-        await_request(1, 3)
-        free()
+        ComfyuiBridge.await_request(1, 3)
+        ComfyuiBridge.free()
     else:
         return "Generate error."
-    url = config.COMFYUI_URL
-    output_node = config.COMFYUI_NODE_OUTPUT
+    url = COMFYUI_URL
+    output_node = COMFYUI_NODE_OUTPUT
     # リクエストヒストリからファイル名を取得
     headers = {"Content-Type": "application/json"}
     response = requests.get(f"{url}history/{id}", headers=headers)
@@ -80,7 +114,7 @@ def generate_picture(prompt: str) -> str:
 @mcp.tool()
 def get_picture(subfolder: str, filename: str) -> Image:
     """subfolder と filename を指定して画像の PNG バイナリを取得する"""
-    url = config.COMFYUI_URL
+    url = COMFYUI_URL
     headers = {"Content-Type": "application/json"}
     params = {"subfolder": subfolder, "filename": filename}
     response = requests.get(f"{url}view", headers=headers, params=params)
@@ -95,7 +129,7 @@ def get_picture(subfolder: str, filename: str) -> Image:
 def get_caption(subfolder: str, filename: str) -> str:
     """subfolder と filename を指定して生成した画像のキャプションをテキスト形式で取得する"""
     lora = get_lora()
-    url = f"{config.COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
+    url = f"{COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
     vision = OllamaCaption.OllamaCaption(model_name=lora.data["vision_model"])
     caption = vision.caption(url, prompt=VISION_PROMPT)
     return caption
@@ -104,7 +138,7 @@ def get_caption(subfolder: str, filename: str) -> str:
 @mcp.tool()
 def get_tag(subfolder: str, filename: str) -> str:
     """subfolder と filename を指定して生成した画像からWD1.4タグを解析してテキスト形式で取得する"""
-    url = f"{config.COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
+    url = f"{COMFYUI_URL}view?subfolder={subfolder}&filename={filename}"
     tagger = Tagger.WD14Tagger(Tagger.SWINV2_MODEL_DSV3_REPO)
     tags = tagger.image_tag(url, threshold=0.25)
     return tags
