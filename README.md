@@ -73,7 +73,7 @@ uv pip install -e .
 
 1. サンプル設定ファイルをコピーします：
    ```bash
-   cp src/fm_mcp_comfyui_bridge/config/sample_lora.yaml src/fm_mcp_comfyui_bridge/config/config.yaml
+   cp src/fm_mcp_comfyui_bridge/config/sample_config.yaml src/fm_mcp_comfyui_bridge/config/config.yaml
    ```
 
 2. コピーした `config.yaml` ファイルを編集して、使用するモデル名を設定します：
