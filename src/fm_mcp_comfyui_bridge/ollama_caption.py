@@ -126,6 +126,7 @@ class OllamaCaption:
             )
             response = ollama.chat(
                 model=self.model_name,
+                keep_alive="30s",
                 messages=[
                     {
                         "role": "user",

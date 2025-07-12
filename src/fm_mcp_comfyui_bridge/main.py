@@ -1,3 +1,5 @@
+import signal
+import sys
 from pathlib import Path
 
 import requests
@@ -183,8 +185,34 @@ def get_documents(topic: str) -> str:
         return ""
 
 
+def signal_handler(signum, frame):
+    """シグナル受信時の終了処理"""
+    print("Received signal, shutting down gracefully...", file=sys.stderr)
+    sys.exit(0)
+
+
+# シグナルハンドラーの設定
+signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
+signal.signal(signal.SIGTERM, signal_handler)  # 終了シグナル
+
+
 def main():
-    mcp.run()
+    try:
+        mcp.run(transport="stdio")
+    except KeyboardInterrupt:
+        # Ctrl+C での終了を適切に処理
+        print("MCP server stopped by user", file=sys.stderr)
+        sys.exit(0)
+    except EOFError:
+        # stdin が閉じられた場合の処理
+        print("stdin closed, exiting...", file=sys.stderr)
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error running MCP server: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        # 終了処理を強制的に実行
+        sys.exit(0)
 
 
 if __name__ == "__main__":
